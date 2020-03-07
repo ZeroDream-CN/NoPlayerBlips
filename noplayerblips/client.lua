@@ -37,12 +37,14 @@ local disable_player_names_distance = 5
 local god = false
 
 Citizen.CreateThread(function()
-    TriggerServerEvent('CheckPermissions')
+    TriggerServerEvent('NoPlayerBlips:CheckPermissions')
+    local onlinePlayers
     while true do
         Citizen.Wait(0) -- Wait 0 seconds to prevent crashing.
-        if not god and NetworkGetNumConnectedPlayers() >= min_players_online then
-            for x=0,32 do
-                local entityblip = GetBlipFromEntity(GetPlayerPed(x))
+        onlinePlayers = GetActivePlayers()
+        if not god and #onlinePlayers >= min_players_online then
+            for _, player in pairs(onlinePlayers) do
+                local entityblip = GetBlipFromEntity(GetPlayerPed(player))
                 if DoesBlipExist(entityblip) then
                     SetBlipShowCone(blip, false)
                     SetBlipDisplay(entityblip, blip_display_type)
@@ -56,23 +58,23 @@ Citizen.CreateThread(function()
                 end
             end
             -- Loop through all the players
-            for Player=0,NetworkGetNumConnectedPlayers() do
+            for _, Player in pairs(onlinePlayers) do
                 local GamerTagId = 0
                 local PlayerPed = GetPlayerPed(Player)
-                
+
                 -- If the player (loop id) is NOT the same as the current player, create a new GamerTagId.
-                if Player ~= PlayerId() then
+                if Player ~= PlayerId() and not disable_player_names then
                     GamerTagId = CreateMpGamerTag(PlayerPed, GetPlayerName(Player), false, false, "", 0)
                 end
-                
+
                 -- Using that GamerTagId, we remove the gamertag if the player is more than _distance_ away from another other player.
-                if Vdist2(GetEntityCoords(PlayerPed, true), GetEntityCoords(PlayerPedId(), true)) > disable_player_names_distance * 10 or GamerTagId == PlayerId() then
+                if Vdist2(GetEntityCoords(PlayerPed, true), GetEntityCoords(PlayerPedId(), true)) > disable_player_names_distance * 10 or GamerTagId == PlayerId() or disable_player_names then
                     RemoveMpGamerTag(GamerTagId)
                 end
             end
         else
-            for x=0,32 do
-                local entityblip = GetBlipFromEntity(GetPlayerPed(x))
+            for _, player in pairs(onlinePlayers) do
+                local entityblip = GetBlipFromEntity(GetPlayerPed(player))
                 if DoesBlipExist(entityblip) then
                     SetBlipDisplay(entityblip, alternative_blip_display_type)
                 end
@@ -81,8 +83,8 @@ Citizen.CreateThread(function()
     end
 end)
 
-RegisterNetEvent('SetGod')
-AddEventHandler('SetGod', function()
+RegisterNetEvent('NoPlayerBlips:SetGod')
+AddEventHandler('NoPlayerBlips:SetGod', function()
     god = true
 end)
 
